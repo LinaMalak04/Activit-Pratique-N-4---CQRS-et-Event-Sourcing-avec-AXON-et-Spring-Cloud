@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ebank-cqrs-postgres
+    environment:
+      POSTGRES_DB: ebank_cqrs_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d ebank_cqrs_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ebank-cqrs-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@enset.ma
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8888:80"
+    depends_on:
+      - postgres
+
+volumes:
+  pg_data:
