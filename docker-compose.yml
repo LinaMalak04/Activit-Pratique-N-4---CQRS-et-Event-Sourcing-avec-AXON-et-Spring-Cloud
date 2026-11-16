@@ -27,5 +27,21 @@ services:
     depends_on:
       - postgres
 
+  axonserver:
+    image: axoniq/axonserver:latest
+    container_name: ebank-cqrs-axonserver
+    hostname: axonserver
+    environment:
+      AXONIQ_AXONSERVER_STANDALONE: "true"
+      AXONIQ_AXONSERVER_DEVMODE_ENABLED: "true"
+    ports:
+      - "8024:8024"   # console web (HTTP)
+      - "8124:8124"   # gRPC (clients Axon)
+    volumes:
+      - axon_data:/axonserver/data
+      - axon_events:/axonserver/events
+
 volumes:
   pg_data:
+  axon_data:
+  axon_events:
