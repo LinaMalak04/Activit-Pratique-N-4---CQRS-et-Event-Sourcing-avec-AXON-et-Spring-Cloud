@@ -1,11 +1,13 @@
 package ma.enset.ebankcqrses.query.handlers;
 
 import ma.enset.ebankcqrses.query.dtos.AccountDTO;
+import ma.enset.ebankcqrses.query.dtos.AccountOperationDTO;
 import ma.enset.ebankcqrses.query.dtos.AccountStatementResponseDTO;
 import ma.enset.ebankcqrses.query.entities.Account;
 import ma.enset.ebankcqrses.query.mappers.AccountMapper;
 import ma.enset.ebankcqrses.query.queries.GetAccountStatementQuery;
 import ma.enset.ebankcqrses.query.queries.GetAllAccountsQuery;
+import ma.enset.ebankcqrses.query.queries.WatchEventQuery;
 import ma.enset.ebankcqrses.query.repositories.AccountOperationRepository;
 import ma.enset.ebankcqrses.query.repositories.AccountRepository;
 import org.axonframework.queryhandling.QueryHandler;
@@ -36,5 +38,12 @@ public class AccountQueryHandler {
         return new AccountStatementResponseDTO(AccountMapper.toDTO(account),
                 operationRepository.findByAccountIdOrderByDateAsc(query.accountId()).stream()
                         .map(AccountMapper::toDTO).toList());
+    }
+
+    /** Résultat initial de la subscription query : l'historique des opérations du compte. */
+    @QueryHandler
+    public List<AccountOperationDTO> on(WatchEventQuery query) {
+        return operationRepository.findByAccountIdOrderByDateAsc(query.accountId()).stream()
+                .map(AccountMapper::toDTO).toList();
     }
 }

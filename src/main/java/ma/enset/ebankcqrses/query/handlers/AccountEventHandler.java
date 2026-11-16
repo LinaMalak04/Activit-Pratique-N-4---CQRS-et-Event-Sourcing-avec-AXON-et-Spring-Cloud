@@ -5,10 +5,13 @@ import ma.enset.ebankcqrses.enums.OperationType;
 import ma.enset.ebankcqrses.events.*;
 import ma.enset.ebankcqrses.query.entities.Account;
 import ma.enset.ebankcqrses.query.entities.AccountOperation;
+import ma.enset.ebankcqrses.query.mappers.AccountMapper;
+import ma.enset.ebankcqrses.query.queries.WatchEventQuery;
 import ma.enset.ebankcqrses.query.repositories.AccountOperationRepository;
 import ma.enset.ebankcqrses.query.repositories.AccountRepository;
 import org.axonframework.eventhandling.EventHandler;
 import org.axonframework.eventhandling.Timestamp;
+import org.axonframework.queryhandling.QueryUpdateEmitter;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -21,11 +24,21 @@ import java.time.Instant;
 public class AccountEventHandler {
     private final AccountRepository accountRepository;
     private final AccountOperationRepository operationRepository;
+    private final QueryUpdateEmitter queryUpdateEmitter;
 
     public AccountEventHandler(AccountRepository accountRepository,
-                               AccountOperationRepository operationRepository) {
+                               AccountOperationRepository operationRepository,
+                               QueryUpdateEmitter queryUpdateEmitter) {
         this.accountRepository = accountRepository;
         this.operationRepository = operationRepository;
+        this.queryUpdateEmitter = queryUpdateEmitter;
+    }
+
+    /** Pousse l'opération vers tous les abonnés (SSE) qui surveillent ce compte. */
+    private void emit(AccountOperation operation) {
+        queryUpdateEmitter.emit(WatchEventQuery.class,
+                query -> query.accountId().equals(operation.getAccount().getId()),
+                AccountMapper.toDTO(operation));
     }
 
     @EventHandler
@@ -62,9 +75,10 @@ public class AccountEventHandler {
         Account account = accountRepository.findById(event.accountId()).orElseThrow();
         account.setBalance(account.getBalance() + event.amount());
         accountRepository.save(account);
-        operationRepository.save(AccountOperation.builder()
+        AccountOperation operation = operationRepository.save(AccountOperation.builder()
                 .date(timestamp).amount(event.amount()).type(OperationType.CREDIT)
                 .currency(event.currency()).account(account).build());
+        emit(operation);
     }
 
     @EventHandler
@@ -73,8 +87,9 @@ public class AccountEventHandler {
         Account account = accountRepository.findById(event.accountId()).orElseThrow();
         account.setBalance(account.getBalance() - event.amount());
         accountRepository.save(account);
-        operationRepository.save(AccountOperation.builder()
+        AccountOperation operation = operationRepository.save(AccountOperation.builder()
                 .date(timestamp).amount(event.amount()).type(OperationType.DEBIT)
                 .currency(event.currency()).account(account).build());
+        emit(operation);
     }
 }
